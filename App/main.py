@@ -21,20 +21,28 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.join_button)
         self.centralWidget.setLayout(self.layout)
         self.timer = QTimer()
+        self.server_check_timer = QTimer()
 
         self.join_button.clicked.connect(self.start_search)
         self.timer.timeout.connect(self.join)
+        self.server_check_timer.timeout.connect(self.server_check)
     
     def start_search(self):
         self.join_game(self.get_server(0))
         self.join_button.setText("Wait for a game")
         self.timer.start(5000)
 
+    def server_check(self):
+        if self.slots_avalible(1) < 2:
+            print("server check")
+            self.join_game(self.get_server(0))
+            self.start_search()
 
     def join(self):
         if self.slots_avalible(1) > 0:
             self.join_game(self.get_server(1))
             self.timer.stop()
+            self.server_check_timer.start(5000)
             self.join_button.setText("Join")
 
     def get_server(self, id):
@@ -62,7 +70,7 @@ class MainWindow(QMainWindow):
 
         if xonotic_process:
             xonotic_process.terminate()
-            xonotic_process.wait(timeout=5)
+            xonotic_process.wait(timeout=30)
             xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect 192.168.1.155:{port}"])
         else:
             xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect 192.168.1.155:{port}"])
