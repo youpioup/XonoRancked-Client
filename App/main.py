@@ -1,6 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 import subprocess
+import requests
 
 
 class MainWindow(QMainWindow):
@@ -17,7 +18,14 @@ class MainWindow(QMainWindow):
         self.join_button.clicked.connect(self.join_game)
     
     def join_game(self):
-        subprocess.run(["xonotic-sdl-wrapper", "+connect 192.168.1.155:26000"])
+        url = "http://127.0.0.1:8000/server/0"
+
+        res = requests.get(url)
+
+        if res.status_code == 200:
+            print(res.json())
+
+        subprocess.run([f"xonotic-sdl-wrapper", "+connect 192.168.1.155:{res.json[port]}"])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
