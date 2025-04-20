@@ -4,6 +4,7 @@ from PySide6.QtCore import QTimer
 import subprocess
 import requests
 import os
+import platform
 
 def load_config():
     if not os.path.exists("config.txt"):
@@ -91,7 +92,7 @@ class MainWindow(QMainWindow):
         self.timer.start(5000)
 
     def server_check(self):
-        if self.slots_avalible(1) < 2:
+        if self.slots_avalible(1) > 0:
             self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
             self.start_search()
 
@@ -138,12 +139,20 @@ class MainWindow(QMainWindow):
 
     def join_game(self, ip_address: str, port:int):
 
+        launcher_dir = os.path.dirname(self.launch_commande.text())
+
         if self.xonotic_process:
             self.xonotic_process.terminate()
             self.xonotic_process.wait(timeout=30)
-            self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
+            if platform.system() == "Windows":
+                self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"], cwd=launcher_dir)
+            else:
+                self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
         else:
-            self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
+            if platform.system() == "Windows":
+                self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"], cwd=launcher_dir)
+            else:
+                self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
 
 
 
