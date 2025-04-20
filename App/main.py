@@ -28,19 +28,18 @@ class MainWindow(QMainWindow):
         self.server_check_timer.timeout.connect(self.server_check)
     
     def start_search(self):
-        self.join_game(self.get_server(0))
+        self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
         self.join_button.setText("Wait for a game")
         self.timer.start(5000)
 
     def server_check(self):
         if self.slots_avalible(1) < 2:
-            print("server check")
-            self.join_game(self.get_server(0))
+            self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
             self.start_search()
 
     def join(self):
         if self.slots_avalible(1) > 0:
-            self.join_game(self.get_server(1))
+            self.join_game(self.get_server(1)["ip_address"], self.get_server(1)["port"])
             self.timer.stop()
             self.server_check_timer.start(5000)
             self.join_button.setText("Join")
@@ -49,31 +48,44 @@ class MainWindow(QMainWindow):
         url = f"http://127.0.0.1:8000/server/{id}"
         res = requests.get(url)
         if res.status_code == 200:
-            port = res.json()["port"]
-            return port
+            print(res.json())
+            return res.json()
         else:
             print(f"error:{res.status_code}")
         
 
-
-    def slots_avalible(self, id):
-        r = requests.get(f"http://127.0.0.1:8000/server_status/{id}")
+    def slots_avalible(self, server_id):
+        url = f"http://127.0.0.1:8000/server_status/{server_id}"
+        r = requests.get(url)
+        print(f"Réponse brute de l'API : {r.text}")  # Affiche la réponse brute
         if r.status_code == 200:
-            slots = r.json()["available_slots"]
-            return slots
+            try:
+                data = r.json()
+                print(f"Réponse JSON : {data}")  # Affiche la réponse JSON
+                slots = data["available_slots"]
+                if isinstance(slots, int):
+                    return slots
+                else:
+                    return 0
+            except KeyError:
+                print("La clé 'available_slots' est absente de la réponse JSON.")
+                return 0
+            except ValueError:
+                print("La réponse n'est pas un JSON valide.")
+                return 0
         else:
-            print (f"error:{r.status_code}")
+            print(f"Erreur HTTP : {r.status_code}")
+            return 0
 
-
-    def join_game(self, port:int):
+    def join_game(self, ip_address: str, port:int):
         global xonotic_process
 
         if xonotic_process:
             xonotic_process.terminate()
             xonotic_process.wait(timeout=30)
-            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect 192.168.1.155:{port}"])
+            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
         else:
-            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect 192.168.1.155:{port}"])
+            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
