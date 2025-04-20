@@ -3,11 +3,30 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayou
 from PySide6.QtCore import QTimer
 import subprocess
 import requests
+import os
 
-xonotic_process = None
+def load_config():
+    if not os.path.exists("config.txt"):
+        with open("config.txt", "w") as f:
+            f.write("backend_ip=127.0.0.1\n")
+            f.write("backend_port=8000\n")
+        print("fichier de config crée avec des valeurs par défaut.")
+
+    with open("config.txt", "r") as f:
+        lines = f.readlines()
+
+    config = {}
+    for line in lines:
+        line = line.strip()
+        if "=" in line:
+            key, value = line.split("=", 1)
+            config[key] = value
+    return config
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        self.xonotic_process = None
         super().__init__()
         self.setWindowTitle("XonoRanked")
 
@@ -45,7 +64,9 @@ class MainWindow(QMainWindow):
             self.join_button.setText("Join")
 
     def get_server(self, id):
-        url = f"http://127.0.0.1:8000/server/{id}"
+        backend_ip = load_config()["backend_ip"]
+        backend_port = load_config()["backend_port"]
+        url = f"http://{backend_ip}:{backend_port}/server/{id}"
         res = requests.get(url)
         if res.status_code == 200:
             print(res.json())
@@ -55,37 +76,36 @@ class MainWindow(QMainWindow):
         
 
     def slots_avalible(self, server_id):
-        url = f"http://127.0.0.1:8000/server_status/{server_id}"
+        backend_ip = load_config()["backend_ip"]
+        backend_port = load_config()["backend_port"]
+        url = f"http://{backend_ip}:{backend_port}/server_status/{server_id}"
         r = requests.get(url)
-        print(f"Réponse brute de l'API : {r.text}")  # Affiche la réponse brute
         if r.status_code == 200:
             try:
                 data = r.json()
-                print(f"Réponse JSON : {data}")  # Affiche la réponse JSON
                 slots = data["available_slots"]
                 if isinstance(slots, int):
                     return slots
                 else:
                     return 0
             except KeyError:
-                print("La clé 'available_slots' est absente de la réponse JSON.")
                 return 0
             except ValueError:
-                print("La réponse n'est pas un JSON valide.")
                 return 0
         else:
-            print(f"Erreur HTTP : {r.status_code}")
+            print(f"error HTTP : {r.status_code}")
             return 0
 
     def join_game(self, ip_address: str, port:int):
-        global xonotic_process
 
-        if xonotic_process:
-            xonotic_process.terminate()
-            xonotic_process.wait(timeout=30)
-            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
+        if self.xonotic_process:
+            self.xonotic_process.terminate()
+            self.xonotic_process.wait(timeout=30)
+            self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
         else:
-            xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
+            self.xonotic_process = subprocess.Popen([self.launch_commande.text(), f"+connect {ip_address}:{port}"])
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
