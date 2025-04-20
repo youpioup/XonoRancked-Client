@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QLabel
 from PySide6.QtCore import QTimer
 import subprocess
 import requests
@@ -23,6 +23,38 @@ def load_config():
             config[key] = value
     return config
 
+def get_waiting_list() -> list:
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/waiting_list"
+    res = requests.get(url)
+    if res.status_code == 200:
+            print(res.json())
+            return res.json()
+    else:
+        print(f"error:{res.status_code}")
+
+def remove_from_waiting_list(name):
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/waiting_list/?name={name}"
+    res = requests.delete(url)
+    if res.status_code == 200:
+            print(res.json())
+            return res.json()
+    else:
+        print(f"error:{res.status_code}")
+
+def add_to_waiting_list(name):
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/waiting_list/?name={name}"
+    res = requests.post(url)
+    if res.status_code == 200:
+        print(res.json())
+        return res.json()
+    else:
+        print(f"error:{res.status_code}")
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -31,12 +63,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("XonoRanked")
 
         self.join_button = QPushButton("Join")
+        self.launch_commande_label = QLabel("launch commande")
         self.launch_commande = QLineEdit("xonotic-sdl-wrapper")
+        self.player_name_label = QLabel("player name")
+        self.player_name = QLineEdit()
 
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         self.layout = QVBoxLayout()
+        self.layout.addWidget(self.launch_commande_label)
         self.layout.addWidget(self.launch_commande)
+        self.layout.addWidget(self.player_name_label)
+        self.layout.addWidget(self.player_name)
         self.layout.addWidget(self.join_button)
         self.centralWidget.setLayout(self.layout)
         self.timer = QTimer()
@@ -49,6 +87,7 @@ class MainWindow(QMainWindow):
     def start_search(self):
         self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
         self.join_button.setText("Wait for a game")
+        add_to_waiting_list(self.player_name.text())
         self.timer.start(5000)
 
     def server_check(self):
@@ -57,7 +96,8 @@ class MainWindow(QMainWindow):
             self.start_search()
 
     def join(self):
-        if self.slots_avalible(1) > 0:
+        if self.slots_avalible(1) == 2 and len(get_waiting_list()) >= 2:
+            remove_from_waiting_list(self.player_name.text())
             self.join_game(self.get_server(1)["ip_address"], self.get_server(1)["port"])
             self.timer.stop()
             self.server_check_timer.start(5000)
