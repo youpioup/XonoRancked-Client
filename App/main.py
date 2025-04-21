@@ -57,6 +57,51 @@ def add_to_waiting_list(name):
     else:
         print(f"error:{res.status_code}")
 
+def get_server(id):
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/server/{id}"
+    res = requests.get(url)
+    if res.status_code == 200:
+        print(res.json())
+        return res.json()
+    else:
+        print(f"error:{res.status_code}")
+
+def slots_avalible(server_id):
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/server_status/{server_id}"
+    r = requests.get(url)
+    if r.status_code == 200:
+        try:
+            data = r.json()
+            slots = data["available_slots"]
+            if isinstance(slots, int):
+                return slots
+            else:
+                return 0
+        except KeyError:
+            return 0
+        except ValueError:
+            return 0
+    else:
+        print(f"error HTTP : {r.status_code}")
+        return 0
+    
+def can_join() -> bool:
+    backend_ip = load_config()["backend_ip"]
+    backend_port = load_config()["backend_port"]
+    url = f"http://{backend_ip}:{backend_port}/waiting_list/player_can_join"
+    r = requests.get(url)
+    if r.status_code == 200:
+        data = r.json()
+        return data["can_join"]
+    else:
+        print(f"error HTTP : {r.status_code}")
+        return
+    
+
 class MainWindow(QMainWindow):
     def __init__(self):
         self.xonotic_process = None
@@ -86,56 +131,29 @@ class MainWindow(QMainWindow):
         self.server_check_timer.timeout.connect(self.server_check)
     
     def start_search(self):
-        self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
+        self.join_game(get_server(0)["ip_address"], get_server(0)["port"])
         self.join_button.setText("Wait for a game")
         add_to_waiting_list(self.player_name.text())
         self.timer.start(5000)
 
     def server_check(self):
-        if self.slots_avalible(1) > 0:
-            self.join_game(self.get_server(0)["ip_address"], self.get_server(0)["port"])
+        if slots_avalible(1) > 0:
+            self.join_game(get_server(0)["ip_address"], get_server(0)["port"])
             self.start_search()
 
     def join(self):
-        if self.slots_avalible(1) == 2 and len(get_waiting_list()) >= 2:
+        slots = slots_avalible(1)
+        joinable = can_join()
+        print("try to join")
+        print("slots avalible: ", slots)
+        print("can join: ", joinable)
+        if joinable == True and slots > 0:
+            print("joining")
             remove_from_waiting_list(self.player_name.text())
-            self.join_game(self.get_server(1)["ip_address"], self.get_server(1)["port"])
+            self.join_game(get_server(1)["ip_address"], get_server(1)["port"])
             self.timer.stop()
             self.server_check_timer.start(180000)
             self.join_button.setText("Join")
-
-    def get_server(self, id):
-        backend_ip = load_config()["backend_ip"]
-        backend_port = load_config()["backend_port"]
-        url = f"http://{backend_ip}:{backend_port}/server/{id}"
-        res = requests.get(url)
-        if res.status_code == 200:
-            print(res.json())
-            return res.json()
-        else:
-            print(f"error:{res.status_code}")
-        
-
-    def slots_avalible(self, server_id):
-        backend_ip = load_config()["backend_ip"]
-        backend_port = load_config()["backend_port"]
-        url = f"http://{backend_ip}:{backend_port}/server_status/{server_id}"
-        r = requests.get(url)
-        if r.status_code == 200:
-            try:
-                data = r.json()
-                slots = data["available_slots"]
-                if isinstance(slots, int):
-                    return slots
-                else:
-                    return 0
-            except KeyError:
-                return 0
-            except ValueError:
-                return 0
-        else:
-            print(f"error HTTP : {r.status_code}")
-            return 0
 
     def join_game(self, ip_address: str, port:int):
 
