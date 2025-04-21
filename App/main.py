@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
             remove_from_waiting_list(self.player_name.text())
             self.join_game(self.get_server(1)["ip_address"], self.get_server(1)["port"])
             self.timer.stop()
-            self.server_check_timer.start(5000)
+            self.server_check_timer.start(180000)
             self.join_button.setText("Join")
 
     def get_server(self, id):
