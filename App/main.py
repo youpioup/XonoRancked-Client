@@ -131,10 +131,14 @@ class MainWindow(QMainWindow):
         self.server_check_timer.timeout.connect(self.server_check)
     
     def start_search(self):
-        self.join_game(get_server(0)["ip_address"], get_server(0)["port"])
-        self.join_button.setText("Wait for a game")
-        add_to_waiting_list(self.player_name.text())
-        self.timer.start(5000)
+        if self.player_name.text() in get_waiting_list():
+            remove_from_waiting_list(self.player_name.text())
+            self.join_button.setText("Join")
+        else:
+            self.join_game(get_server(0)["ip_address"], get_server(0)["port"])
+            self.join_button.setText("Wait for a game (cancel)")
+            add_to_waiting_list(self.player_name.text())
+            self.timer.start(5000)
 
     def server_check(self):
         if slots_avalible(1) > 0:
